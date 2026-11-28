@@ -71,6 +71,16 @@
   .liv-o { border-left-color: var(--ok); } .liv-o .giorni b { color: var(--ok); }
   .vuoto { text-align: center; color: var(--tenue); padding: 40px 10px; }
 
+  /* scheda sicurezza (v2.10) */
+  .titolo-sez { font-size: 13px; font-weight: 700; color: var(--tenue); text-transform: uppercase; letter-spacing: .05em; margin: 16px 2px 8px; }
+  .titolo-sez:first-child { margin-top: 0; }
+  .chiama { flex: none; background: var(--rosso); color: #fff; text-decoration: none; font-weight: 700; font-size: 17px;
+    border-radius: 10px; padding: 8px 14px; }
+  .chiama.blu { background: var(--blu); font-size: 15px; }
+  .incarico { background: var(--carta); border-radius: 12px; padding: 11px 12px; margin-bottom: 8px; border-left: 5px solid var(--verde); }
+  .incarico .nome { font-weight: 650; margin-bottom: 4px; }
+  .incarico .persone { color: var(--tenue); font-size: 14.5px; line-height: 1.5; }
+
   /* scheda dipendente */
   .velo { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 10; display: flex; align-items: flex-end; justify-content: center; }
   .foglio { background: var(--sfondo); width: 100%; max-width: 720px; max-height: 88vh; overflow-y: auto; border-radius: 18px 18px 0 0;
@@ -121,6 +131,7 @@
       <button class="attiva" data-vista="scadenze">Scadenze</button>
       <button data-vista="dipendenti">Dipendenti</button>
       <button data-vista="azienda" id="tab-azienda" class="nascosto">Azienda</button>
+      <button data-vista="sicurezza" id="tab-sicurezza" class="nascosto">Sicurezza</button>
     </nav>
   </header>
   <main>
@@ -151,6 +162,7 @@
       </div>
       <div id="lista-azienda"></div>
     </section>
+    <section id="v-sicurezza" class="nascosto"><div id="lista-sicurezza"></div></section>
     <p class="sola">Consultazione in sola lettura · le modifiche si fanno dal programma sul PC</p>
   </main>
 </div>
@@ -256,6 +268,27 @@ function disegnaAzienda() {
     <div class="giorni"><b>${testoGiorni(s.g)}</b>${fmt(s.d)}</div></div>`).join("")
     : `<div class="vuoto">${filtroAz === "tutte" ? "Nessuna scadenza aziendale" : "Nessuna scadenza aziendale in preavviso 👍"}</div>`;
 }
+function disegnaSicurezza() {
+  const s = dati.s && typeof dati.s === "object" ? dati.s : null;
+  $("tab-sicurezza").classList.toggle("nascosto", !s);
+  if (!s) return;
+  const tel = t => String(t || "").replace(/[^\d+]/g, "");
+  const chiama = (t, cls) => tel(t) ? `<a class="chiama ${cls || ""}" href="tel:${tel(t)}">${esc(t)}</a>` : "";
+  let h = "";
+  if ((s.n || []).length) {
+    h += `<div class="titolo-sez">In caso di emergenza</div>` + s.n.map(n => `<div class="voce liv-r">
+      <div class="info"><div class="nome">${esc(n.c || "")}</div><div class="sotto">${esc(n.e || "")}</div></div>${chiama(n.tel)}</div>`).join("");
+  }
+  if ((s.r || []).length) {
+    h += `<div class="titolo-sez">Incarichi per la sicurezza</div>` + s.r.map(r => `<div class="incarico">
+      <div class="nome">${esc(r.t)}</div><div class="persone">${r.p.map(esc).join("<br>")}</div></div>`).join("");
+  }
+  if ((s.e || []).length) {
+    h += `<div class="titolo-sez">Figure esterne</div>` + s.e.map(f => `<div class="voce">
+      <div class="info"><div class="nome">${esc(f.n)}</div><div class="sotto">${esc(f.r)}</div></div>${chiama(f.tel, "blu")}</div>`).join("");
+  }
+  $("lista-sicurezza").innerHTML = h || `<div class="vuoto">Nessun incarico registrato</div>`;
+}
 function disegna() {
   $("titolo").innerHTML = dati.azienda ? esc(dati.azienda) : 'Scadenze <span>MBC</span>';
   const gen = new Date(dati.generato);
@@ -264,7 +297,7 @@ function disegna() {
   const vecchi = (Date.now() - gen) / 86400000;
   $("avviso").classList.toggle("nascosto", vecchi < 3);
   $("avviso").textContent = `Attenzione: i dati hanno ${Math.floor(vecchi)} giorni. Verifica che il programma sul PC venga aperto e aggiorni l'app.`;
-  disegnaScadenze(); disegnaDipendenti(); disegnaAzienda();
+  disegnaScadenze(); disegnaDipendenti(); disegnaAzienda(); disegnaSicurezza();
   const attiva = document.querySelector(".schede button.attiva");
   if (attiva && attiva.classList.contains("nascosto")) document.querySelector('[data-vista="scadenze"]').click();
 }
@@ -306,7 +339,7 @@ $("aggiorna").onclick = async () => {
 $("esci").onclick = () => { if (confirm("Uscire e dimenticare il codice su questo telefono?")) { memScrivi(null); codiceSessione = null; dati = null; mostraAccesso(); } };
 document.querySelectorAll(".schede button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".schede button").forEach(x => x.classList.toggle("attiva", x === b));
-  ["scadenze", "dipendenti", "azienda"].forEach(v => $("v-" + v).classList.toggle("nascosto", b.dataset.vista !== v));
+  ["scadenze", "dipendenti", "azienda", "sicurezza"].forEach(v => $("v-" + v).classList.toggle("nascosto", b.dataset.vista !== v));
 });
 $("filtri-az").onclick = ev => { const b = ev.target.closest("button"); if (!b) return; filtroAz = b.dataset.f;
   document.querySelectorAll("#filtri-az button").forEach(x => x.classList.toggle("attiva", x === b)); disegnaAzienda(); };
